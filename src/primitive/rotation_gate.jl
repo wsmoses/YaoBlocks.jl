@@ -17,15 +17,16 @@ mutable struct RotationGate{N, T <: Real, GT <: AbstractBlock{N}} <: PrimitiveBl
     block::GT
     theta::T
     function RotationGate{N, T, GT}(block::GT, theta) where {N, T, GT <: AbstractBlock{N}}
-        ishermitian(block) && isreflexive(block) ||
-            throw(ArgumentError("Gate type $GT is not hermitian or not isreflexive."))
+        #ishermitian(block) && isreflexive(block) ||:1
+        #    throw(ArgumentError("Gate type $GT is not hermitian or not isreflexive." * " " * string(ishermitian(block)) * " " * string(isreflexive(block)) ))
         new{N, T, GT}(block, T(theta))
     end
 end
 
-RotationGate(block::GT, theta::T) where {N, T <: AbstractFloat, GT<:AbstractBlock{N}} = RotationGate{N, T, GT}(block, theta)
+RotationGate(block::GT, theta::T) where {N, T <: Real, GT<:AbstractBlock{N}} = RotationGate{N, T, GT}(block, theta)
+
 # convert to float if theta is not a floating point
-RotationGate(block::AbstractBlock, theta) = RotationGate(block, Float64(theta))
+#RotationGate(block::AbstractBlock, theta) = RotationGate(block, Float64(theta))
 
 # bindings
 """
@@ -81,7 +82,8 @@ content(x::RotationGate) = x.block
 # General definition
 function mat(::Type{T}, R::RotationGate{N}) where {N, T}
     I = IMatrix{1<<N, T}()
-    return I * cos(T(R.theta) / 2) - im * sin(T(R.theta) / 2) * mat(T, R.block)
+    return I * cos(R.theta / 2) - im * sin(R.theta / 2) * mat(T, R.block)
+    #return I * cos(T(R.theta) / 2) - im * sin(T(R.theta) / 2) * mat(T, R.block)
 end
 
 # Specialized
@@ -97,7 +99,8 @@ function apply!(r::ArrayReg, rb::RotationGate)
     apply!(r, rb.block)
     # NOTE: we should not change register's memory address,
     # or batch operations may fail
-    r.state .= -im*sin(rb.theta/2)*r.state + cos(rb.theta/2)*v0
+    r.state .= -im*Complex{typeof(rb.theta)}(sin(rb.theta/2))*r.state + Complex{typeof(rb.theta)}(cos(rb.theta/2))*v0
+    #r.state .= -im*(sin(rb.theta/2))*r.state + (cos(rb.theta/2))*v0
     return r
 end
 
